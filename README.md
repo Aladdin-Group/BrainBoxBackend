@@ -59,5 +59,5 @@ Ensure you have Docker and Docker Compose installed on your machine.
 ### Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/brain-box-backend.git
+git clone https://github.com/omonovabdulaziz/BrainBox.git
 cd brain-box-backend
