@@ -1,5 +1,6 @@
 package it.live.brainbox.service.impl;
 
+import it.live.brainbox.entity.User;
 import it.live.brainbox.entity.enums.SystemRoleName;
 import it.live.brainbox.exception.MainException;
 import it.live.brainbox.jwt.JwtProvider;
@@ -13,6 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -23,10 +26,35 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public ResponseEntity<ApiResponse> regLog(UserDTO userDTO) {
-        if (userRepository.findByEmailAndUniqueId(userDTO.getEmail(), userDTO.getUniqueId()).isPresent())
-            return ResponseEntity.ok(ApiResponse.builder().message("Welcome").status(200).object(jwtProvider.generateToken(userDTO.getEmail())).build());
-        userRepository.save(userMapper.toEntity(userDTO));
-        return ResponseEntity.ok(ApiResponse.builder().message("Welcome").status(200).object(jwtProvider.generateToken(userDTO.getEmail())).build());
+        Optional<User> existingUser = userRepository.findByEmailAndUniqueId(userDTO.getEmail(), userDTO.getUniqueId());
+
+        if (existingUser.isPresent()) {
+            // User exists with the same email and UID, just log them in
+            return ResponseEntity.ok(ApiResponse.builder()
+                    .message("Welcome back")
+                    .status(200)
+                    .object(jwtProvider.generateToken(userDTO.getEmail()))
+                    .build());
+        } else {
+            // Check if a user with this email exists
+            Optional<User> userWithSameEmail = userRepository.findByEmail(userDTO.getEmail());
+
+            if (userWithSameEmail.isPresent()) {
+                // A user with this email exists, but with a different UID
+                // Delete the old user
+                userRepository.delete(userWithSameEmail.get());
+            }
+
+            // Create a new user (either because no user existed or we just deleted the old one)
+            User newUser = userMapper.toEntity(userDTO);
+            userRepository.save(newUser);
+
+            return ResponseEntity.ok(ApiResponse.builder()
+                    .message("Welcome")
+                    .status(200)
+                    .object(jwtProvider.generateToken(userDTO.getEmail()))
+                    .build());
+        }
     }
 
     @Override
